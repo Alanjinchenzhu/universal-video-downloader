@@ -1,0 +1,94 @@
+@import "tailwindcss";
+
+/* 自定义基础样式 */
+@layer base {
+  body {
+    background-color: #F5F5F5;
+    color: #1f2937;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  }
+}
+
+/* 自定义组件 */
+@layer components {
+  .card {
+    background-color: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px -4px rgba(0, 0, 0, 0.05);
+    transition: all 0.3s ease;
+  }
+  
+  .card:hover {
+    box-shadow: 0 8px 30px -4px rgba(0, 0, 0, 0.1);
+    transform: translateY(-4px);
+  }
+  
+  .btn-primary {
+    background-color: #1777FF;
+    color: white;
+    padding: 0.625rem 1.5rem;
+    border-radius: 9999px;
+    font-weight: 500;
+    transition: background-color 0.2s ease;
+  }
+  
+  .btn-primary:hover {
+    background-color: #4096FF;
+  }
+  
+  .btn-primary:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(23, 119, 255, 0.2);
+  }
+  
+  .search-input {
+    width: 100%;
+    padding: 0.75rem 1.25rem;
+    background-color: #F9FAFB;
+    border: 1px solid #E5E7EB;
+    border-radius: 9999px;
+    transition: all 0.2s ease;
+  }
+  
+  .search-input:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(23, 119, 255, 0.2);
+    border-color: #1777FF;
+  }
+  
+  .search-input::placeholder {
+    color: #9CA3AF;
+  }
+  
+  .tag {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.25rem 0.75rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    background-color: #F3F4F6;
+    color: #4B5563;
+    border-radius: 9999px;
+    transition: background-color 0.2s ease;
+  }
+  
+  .tag:hover {
+    background-color: #E5E7EB;
+  }
+}
+
+/* 自定义主题变量 */
+@theme {
+  --color-primary: #1777FF;
+  --color-primary-hover: #4096FF;
+  --color-primary-50: #E6F4FF;
+  --color-primary-100: #BAE0FF;
+  --color-primary-500: #1777FF;
+  --color-primary-600: #0958D9;
+  --color-surface: #FFFFFF;
+  --color-background: #F5F5F5;
+  --shadow-card: 0 4px 20px -4px rgba(0, 0, 0, 0.05);
+  --shadow-card-hover: 0 8px 30px -4px rgba(0, 0, 0, 0.1);
+  --radius-card: 12px;
+  --radius-button: 9999px;
+}
