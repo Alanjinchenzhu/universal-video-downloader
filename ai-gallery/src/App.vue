@@ -99,9 +99,19 @@ const handleDownload = async () => {
     const contentDisposition = response.headers.get('Content-Disposition')
     let filename = 'video.mp4'
     if (contentDisposition) {
-      const filenameMatch = contentDisposition.match(/filename\*=UTF-8''(.+)/)
-      if (filenameMatch) {
-        filename = decodeURIComponent(filenameMatch[1])
+      // 尝试多种匹配模式
+      const patterns = [
+        /filename\*=UTF-8''(.+?)(?:;|$)/,
+        /filename\*=utf-8''(.+?)(?:;|$)/,
+        /filename="(.+?)"/,
+        /filename=(.+?)(?:;|$)/
+      ]
+      for (const pattern of patterns) {
+        const match = contentDisposition.match(pattern)
+        if (match && match[1]) {
+          filename = decodeURIComponent(match[1].trim())
+          break
+        }
       }
     }
     
