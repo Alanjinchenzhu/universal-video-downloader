@@ -1,0 +1,74 @@
+# .claudeignore - Claude Code 分析时忽略的文件
+
+# 第三方依赖
+node_modules/
+vendor/
+
+# 构建产物
+build/
+dist/
+bin/
+*.app
+
+# 锁文件（无分析价值）
+package-lock.json
+go.sum
+
+# 数据库文件
+*.db
+*.sqlite
+*.sqlite3
+data/*.db
+data/*.sqlite
+
+# 日志文件
+*.log
+server.log
+logs/
+
+# 环境配置（敏感）
+.env
+.env.local
+.env.*.local
+
+# Git 内部目录
+.git/
+
+# 压缩/混淆文件
+*.min.js
+*.min.css
+
+# 二进制文件
+*.exe
+*.dll
+*.so
+*.dylib
+*.test
+
+# 静态资源
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.ico
+*.svg
+*.woff
+*.woff2
+*.ttf
+*.eot
+
+# IDE 和编辑器
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# 系统文件
+.DS_Store
+Thumbs.db
+
+# 临时文件
+tmp/
+temp/
+*.tmp
