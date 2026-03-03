@@ -38,14 +38,14 @@
 #### 前端
 
 ```bash
-cd ai-gallery
+cd frontend
 npm install
 ```
 
 #### 后端
 
 ```bash
-cd ai-gallery/backend
+cd frontend/backend
 pip install -r requirements.txt
 ```
 
@@ -54,7 +54,7 @@ pip install -r requirements.txt
 #### 启动后端服务
 
 ```bash
-cd ai-gallery/backend
+cd frontend/backend
 python main.py
 ```
 
@@ -63,7 +63,7 @@ python main.py
 #### 启动前端开发服务器
 
 ```bash
-cd ai-gallery
+cd frontend
 npm run dev
 ```
 
@@ -87,15 +87,15 @@ npm run dev
 
 ```
 .
-├── ai-gallery/              # 前端项目目录
-│   ├── backend/             # FastAPI 后端
-│   │   ├── main.py         # 后端主文件
-│   │   └── requirements.txt # Python 依赖
+├── frontend/              # 前端项目目录
 │   ├── src/                 # 前端源码
 │   │   ├── App.vue         # 主组件
 │   │   ├── main.ts         # 入口文件
 │   │   └── styles/         # 样式文件
 │   └── package.json        # Node 依赖
+│── backend/             # FastAPI 后端
+│   ├── main.py         # 后端主文件
+│   └── requirements.txt # Python 依赖
 └── README.md               # 项目说明
 ```
 
