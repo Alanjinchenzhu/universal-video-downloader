@@ -187,6 +187,22 @@ def parse_douyin_video(url: str) -> dict:
         return None
 
 
+def clean_filename(filename: str) -> str:
+    """清理文件名，移除可能导致播放问题的特殊字符"""
+    # 移除话题标签（#开头的内容）
+    filename = re.sub(r'#\S+', '', filename)
+    # 移除其他特殊字符
+    filename = re.sub(r'[\\/:*?"<>|]', '_', filename)
+    # 移除连续的下划线
+    filename = re.sub(r'_+', '_', filename)
+    # 移除首尾空格和下划线
+    filename = filename.strip('_ ')
+    # 如果文件名为空，使用默认名称
+    if not filename:
+        filename = '抖音视频'
+    return filename
+
+
 def download_douyin_video(video_url: str, title: str) -> tuple:
     """下载抖音视频"""
     max_retries = 3
@@ -234,7 +250,9 @@ def download_douyin_video(video_url: str, title: str) -> tuple:
             
             # 创建临时文件
             temp_dir = tempfile.mkdtemp()
-            filename = os.path.join(temp_dir, f"{title}.mp4")
+            # 清理文件名
+            clean_title = clean_filename(title)
+            filename = os.path.join(temp_dir, f"{clean_title}.mp4")
             
             # 写入文件
             with open(filename, 'wb') as f:
@@ -255,7 +273,7 @@ def download_douyin_video(video_url: str, title: str) -> tuple:
                 raise Exception(f"下载的文件太小: {file_size} 字节，可能下载失败")
             
             print(f"抖音视频下载成功: {filename}, 大小: {file_size} 字节")
-            return filename, title, temp_dir
+            return filename, clean_title, temp_dir
             
         except Exception as e:
             print(f"抖音下载错误 (尝试 {attempt + 1}/{max_retries}): {e}")
@@ -391,10 +409,11 @@ def download_video_sync(url: str, format_id: str = None, audio_only: bool = Fals
         if not filename:
             filename = ydl.prepare_filename(info)
 
-        # 从文件名中提取标题
+        # 从文件名中提取标题并清理
         title = os.path.splitext(os.path.basename(filename))[0]
+        clean_title = clean_filename(title)
 
-        return filename, title, temp_dir
+        return filename, clean_title, temp_dir
 
 
 @app.get("/")
