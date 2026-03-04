@@ -189,33 +189,82 @@ def parse_douyin_video(url: str) -> dict:
 
 def download_douyin_video(video_url: str, title: str) -> tuple:
     """下载抖音视频"""
-    try:
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Linux; Android 8.0.0; SM-G955U Build/R16NW) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Mobile Safari/537.36',
-            'Referer': 'https://www.douyin.com/'
-        }
-        
-        # 获取视频流
-        response = requests.get(video_url, headers=headers, stream=True)
-        
-        if response.status_code != 200:
-            raise Exception(f"下载失败，状态码: {response.status_code}")
-        
-        # 创建临时文件
-        temp_dir = tempfile.mkdtemp()
-        filename = os.path.join(temp_dir, f"{title}.mp4")
-        
-        # 写入文件
-        with open(filename, 'wb') as f:
-            for chunk in response.iter_content(chunk_size=8192):
-                if chunk:
-                    f.write(chunk)
-        
-        return filename, title, temp_dir
-        
-    except Exception as e:
-        print(f"抖音下载错误: {e}")
-        raise e
+    max_retries = 3
+    retry_delay = 2
+    
+    for attempt in range(max_retries):
+        try:
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Linux; Android 8.0.0; SM-G955U Build/R16NW) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Mobile Safari/537.36',
+                'Referer': 'https://www.douyin.com/',
+                'Accept': '*/*',
+                'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
+                'Accept-Encoding': 'gzip, deflate, br',
+                'Connection': 'keep-alive',
+            }
+            
+            # 使用session来处理重定向，保持Referer头
+            session = requests.Session()
+            session.verify = False  # 禁用SSL验证
+            
+            # 手动处理重定向，保持Referer头
+            response = session.get(video_url, headers=headers, stream=True, allow_redirects=False, timeout=30)
+            
+            # 如果是重定向，跟随重定向并保持Referer
+            redirect_count = 0
+            max_redirects = 5
+            while response.status_code in (301, 302, 303, 307, 308) and redirect_count < max_redirects:
+                redirect_url = response.headers.get('Location')
+                if not redirect_url:
+                    break
+                
+                print(f"重定向 {redirect_count + 1}: {redirect_url}")
+                response = session.get(redirect_url, headers=headers, stream=True, allow_redirects=False, timeout=30)
+                redirect_count += 1
+            
+            if response.status_code != 200:
+                raise Exception(f"下载失败，状态码: {response.status_code}")
+            
+            # 检查内容类型
+            content_type = response.headers.get('Content-Type', '')
+            if 'video' not in content_type.lower():
+                print(f"警告：响应内容类型不是视频: {content_type}")
+                print(f"响应头: {dict(response.headers)}")
+                print(f"响应内容前200字节: {response.content[:200]}")
+            
+            # 创建临时文件
+            temp_dir = tempfile.mkdtemp()
+            filename = os.path.join(temp_dir, f"{title}.mp4")
+            
+            # 写入文件
+            with open(filename, 'wb') as f:
+                downloaded = 0
+                total_size = int(response.headers.get('Content-Length', 0))
+                for chunk in response.iter_content(chunk_size=8192):
+                    if chunk:
+                        f.write(chunk)
+                        downloaded += len(chunk)
+                        if total_size > 0:
+                            progress = (downloaded / total_size) * 100
+                            if downloaded % 100000 == 0:  # 每100KB打印一次进度
+                                print(f"下载进度: {progress:.1f}% ({downloaded}/{total_size})")
+            
+            # 验证文件大小
+            file_size = os.path.getsize(filename)
+            if file_size < 1024:
+                raise Exception(f"下载的文件太小: {file_size} 字节，可能下载失败")
+            
+            print(f"抖音视频下载成功: {filename}, 大小: {file_size} 字节")
+            return filename, title, temp_dir
+            
+        except Exception as e:
+            print(f"抖音下载错误 (尝试 {attempt + 1}/{max_retries}): {e}")
+            if attempt < max_retries - 1:
+                print(f"等待 {retry_delay} 秒后重试...")
+                import time
+                time.sleep(retry_delay)
+            else:
+                raise e
 
 
 def get_ydl_opts() -> dict:
