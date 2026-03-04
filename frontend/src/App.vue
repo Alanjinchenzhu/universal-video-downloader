@@ -161,7 +161,7 @@ const handleDownload = async () => {
     }
     
     // 合并所有数据块
-    const blob = new Blob(chunks)
+    const blob = new Blob(chunks as BlobPart[])
     const url = window.URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url

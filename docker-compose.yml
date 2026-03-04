@@ -1,0 +1,36 @@
+# VideoDL Docker Compose 配置
+version: '3.8'
+
+services:
+  # 后端服务
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: videodl-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - PYTHONUNBUFFERED=1
+    networks:
+      - videodl-network
+    restart: unless-stopped
+
+  # 前端服务
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: videodl-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - videodl-network
+    restart: unless-stopped
+
+# 网络配置
+networks:
+  videodl-network:
+    driver: bridge

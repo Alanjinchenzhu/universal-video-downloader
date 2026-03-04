@@ -133,3 +133,9 @@ yt-dlp-plugins
 
 # Packages
 yt_dlp_ejs/
+
+# Docker
+*.tar
+*.tar.gz
+docker-compose.override.yml
+.docker/
