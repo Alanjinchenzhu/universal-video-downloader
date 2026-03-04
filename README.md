@@ -213,29 +213,48 @@ curl -X POST http://localhost:8000/download \
 
 ## 📁 项目结构
 
+```mermaid
+graph TD
+    Root[VideoDL] --> Backend[backend/]
+    Root --> Frontend[frontend/]
+    Root --> Docs[docs/]
+    Root --> Claude[.claude/]
+    Root --> Config[配置文件]
+    
+    Backend --> B1[main.py<br/>FastAPI 主文件]
+    Backend --> B2[requirements.txt<br/>Python 依赖]
+    
+    Frontend --> Src[src/]
+    Frontend --> Public[public/]
+    Frontend --> Pkg[package.json]
+    
+    Src --> S1[App.vue<br/>主组件]
+    Src --> S2[main.ts<br/>入口文件]
+    Src --> S3[assets/]
+    
+    Docs --> D1[architecture.md<br/>架构设计]
+    Docs --> D2[api.md<br/>API 文档]
+    Docs --> D3[deployment.md<br/>部署指南]
+    
+    Config --> C1[README.md]
+    Config --> C2[LICENSE]
+    Config --> C3[.gitignore]
+    
+    style Root fill:#e3f2fd
+    style Backend fill:#fff3e0
+    style Frontend fill:#e8f5e9
+    style Docs fill:#f3e5f5
+    style Claude fill:#fce4ec
 ```
-.
-├── backend/                 # 后端项目目录
-│   ├── main.py            # FastAPI 主文件
-│   ├── requirements.txt    # Python 依赖
-│   └── .env.example       # 环境变量示例
-├── frontend/               # 前端项目目录
-│   ├── src/               # 前端源码
-│   │   ├── App.vue        # 主组件
-│   │   ├── main.ts        # 入口文件
-│   │   └── assets/        # 静态资源
-│   ├── public/            # 公共资源
-│   ├── package.json       # Node 依赖
-│   └── vite.config.ts     # Vite 配置
-├── docs/                   # 文档目录
-│   ├── architecture.md    # 架构设计文档
-│   ├── api.md            # API 文档
-│   └── deployment.md     # 部署文档
-├── .claude/               # Claude 技能配置
-├── .gitignore            # Git 忽略文件
-├── README.md             # 项目说明
-└── LICENSE               # 许可证
-```
+
+**目录说明**:
+
+| 目录 | 说明 |
+|------|------|
+| `backend/` | FastAPI 后端代码 |
+| `frontend/` | Vue3 前端代码 |
+| `docs/` | 项目文档 |
+| `.claude/` | Claude 技能配置 |
 
 ## 🔧 配置说明
 
