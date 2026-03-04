@@ -7,6 +7,8 @@ import os
 import re
 import tempfile
 import shutil
+import json
+import requests
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -71,6 +73,151 @@ def normalize_url(url: str) -> str:
     return url
 
 
+def parse_douyin_video(url: str) -> dict:
+    """解析抖音视频信息（无需Cookie）"""
+    try:
+        # 提取视频ID
+        video_id = None
+        
+        # 处理短链接
+        if 'v.douyin.com' in url:
+            response = requests.get(url, allow_redirects=False)
+            url = response.headers.get('Location', url)
+        
+        # 从URL中提取视频ID
+        patterns = [
+            r'/video/(\d+)',
+            r'/share/video/(\d+)',
+            r'modal_id=(\d+)',
+            r'/aweme/v1/play/\?video_id=(\w+)',
+        ]
+        
+        for pattern in patterns:
+            match = re.search(pattern, url)
+            if match:
+                video_id = match.group(1)
+                break
+        
+        if not video_id:
+            return None
+        
+        # 使用移动端接口获取视频信息
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Linux; Android 8.0.0; SM-G955U Build/R16NW) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Mobile Safari/537.36',
+            'Referer': 'https://www.douyin.com/?is_from_mobile_home=1&recommend=1'
+        }
+        
+        # 尝试使用iesdouyin接口
+        share_url = f'https://www.iesdouyin.com/share/video/{video_id}/'
+        response = requests.get(share_url, headers=headers)
+        
+        # 从页面源码中提取JSON数据
+        match = re.search(r'window\._ROUTER_DATA\s*=\s*(\{.*?\});?</', response.text)
+        if not match:
+            return None
+        
+        data = json.loads(match.group(1))
+        
+        # 解析视频信息
+        try:
+            item_list = data['loaderData']['video_(id)/page']['videoInfoRes']['item_list'][0]
+        except (KeyError, IndexError):
+            return None
+        
+        # 提取视频信息
+        title = item_list.get('desc', '抖音视频')
+        nickname = item_list.get('author', {}).get('nickname', '未知用户')
+        aweme_id = item_list.get('aweme_id', video_id)
+        
+        # 获取视频URL
+        video_uri = item_list.get('video', {}).get('play_addr', {}).get('uri')
+        if video_uri:
+            if 'mp3' not in video_uri:
+                video_url = f'https://www.douyin.com/aweme/v1/play/?video_id={video_uri}'
+            else:
+                video_url = video_uri
+        else:
+            video_url = None
+        
+        # 获取封面图
+        cover_url = None
+        try:
+            cover_url = item_list.get('video', {}).get('cover', {}).get('url_list', [None])[0]
+        except (KeyError, IndexError):
+            pass
+        
+        # 检查是否为图集
+        images = item_list.get('images')
+        is_image_set = images is not None
+        
+        if is_image_set:
+            image_urls = []
+            for img in images:
+                try:
+                    image_urls.append(img['url_list'][0])
+                except (KeyError, IndexError):
+                    pass
+        else:
+            image_urls = []
+        
+        return {
+            'title': title,
+            'uploader': nickname,
+            'thumbnail': cover_url,
+            'description': f'来自 {nickname} 的抖音视频',
+            'duration': None,
+            'view_count': None,
+            'like_count': None,
+            'formats': [{
+                'format_id': 'best',
+                'ext': 'mp4',
+                'resolution': 'unknown',
+                'filesize': None,
+                'vcodec': 'h264',
+                'acodec': 'aac',
+            }],
+            'video_url': video_url,
+            'images': image_urls,
+            'is_image_set': is_image_set,
+            'platform': 'douyin',
+        }
+        
+    except Exception as e:
+        print(f"抖音解析错误: {e}")
+        return None
+
+
+def download_douyin_video(video_url: str, title: str) -> tuple:
+    """下载抖音视频"""
+    try:
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Linux; Android 8.0.0; SM-G955U Build/R16NW) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Mobile Safari/537.36',
+            'Referer': 'https://www.douyin.com/'
+        }
+        
+        # 获取视频流
+        response = requests.get(video_url, headers=headers, stream=True)
+        
+        if response.status_code != 200:
+            raise Exception(f"下载失败，状态码: {response.status_code}")
+        
+        # 创建临时文件
+        temp_dir = tempfile.mkdtemp()
+        filename = os.path.join(temp_dir, f"{title}.mp4")
+        
+        # 写入文件
+        with open(filename, 'wb') as f:
+            for chunk in response.iter_content(chunk_size=8192):
+                if chunk:
+                    f.write(chunk)
+        
+        return filename, title, temp_dir
+        
+    except Exception as e:
+        print(f"抖音下载错误: {e}")
+        raise e
+
+
 def get_ydl_opts() -> dict:
     """获取 yt-dlp 配置选项"""
     return {
@@ -85,6 +232,13 @@ def get_video_info_sync(url: str) -> dict:
     """获取视频信息"""
     url = normalize_url(url)
     
+    # 优先尝试抖音解析
+    if 'douyin.com' in url:
+        douyin_info = parse_douyin_video(url)
+        if douyin_info:
+            return douyin_info
+    
+    # 使用yt-dlp解析其他平台
     ydl_opts = get_ydl_opts()
 
     with YoutubeDL(ydl_opts) as ydl:
@@ -138,6 +292,15 @@ def get_video_info_sync(url: str) -> dict:
 def download_video_sync(url: str, format_id: str = None, audio_only: bool = False) -> tuple:
     """下载视频到临时目录，返回文件路径和标题"""
     url = normalize_url(url)
+    
+    # 优先尝试抖音下载
+    if 'douyin.com' in url:
+        douyin_info = parse_douyin_video(url)
+        if douyin_info and douyin_info.get('video_url'):
+            try:
+                return download_douyin_video(douyin_info['video_url'], douyin_info['title'])
+            except Exception as e:
+                print(f"抖音下载失败，尝试使用yt-dlp: {e}")
     
     # 创建临时目录
     temp_dir = tempfile.mkdtemp()
