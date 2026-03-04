@@ -51,6 +51,10 @@ const isDownloading = ref(false)
 const downloadStatus = ref<'idle' | 'success' | 'error'>('idle')
 const statusMessage = ref('')
 const videoInfo = ref<any>(null)
+const downloadProgress = ref(0)
+const downloadSpeed = ref(0)
+const downloadSize = ref(0)
+const totalSize = ref(0)
 
 // 获取视频信息
 const fetchVideoInfo = async () => {
@@ -78,6 +82,10 @@ const handleDownload = async () => {
   isDownloading.value = true
   downloadStatus.value = 'idle'
   statusMessage.value = '正在解析视频...'
+  downloadProgress.value = 0
+  downloadSpeed.value = 0
+  downloadSize.value = 0
+  totalSize.value = 0
   
   try {
     const response = await fetch(`${API_BASE}/download`, {
@@ -93,6 +101,12 @@ const handleDownload = async () => {
     if (!response.ok) {
       const errorData = await response.json()
       throw new Error(errorData.detail || '下载失败')
+    }
+    
+    // 获取文件大小
+    const contentLength = response.headers.get('Content-Length')
+    if (contentLength) {
+      totalSize.value = parseInt(contentLength, 10)
     }
     
     // 获取文件名
@@ -115,8 +129,39 @@ const handleDownload = async () => {
       }
     }
     
-    // 下载文件
-    const blob = await response.blob()
+    // 下载文件流
+    const reader = response.body?.getReader()
+    const chunks: Uint8Array[] = []
+    let startTime = Date.now()
+    let lastUpdateTime = startTime
+    
+    if (reader) {
+      while (true) {
+        const { done, value } = await reader.read()
+        
+        if (done) break
+        
+        chunks.push(value)
+        downloadSize.value += value.length
+        
+        // 更新进度
+        if (totalSize.value > 0) {
+          downloadProgress.value = (downloadSize.value / totalSize.value) * 100
+        }
+        
+        // 计算下载速度
+        const currentTime = Date.now()
+        const timeElapsed = (currentTime - lastUpdateTime) / 1000
+        if (timeElapsed >= 0.5) {
+          const bytesPerSecond = (downloadSize.value / ((currentTime - startTime) / 1000))
+          downloadSpeed.value = bytesPerSecond
+          lastUpdateTime = currentTime
+        }
+      }
+    }
+    
+    // 合并所有数据块
+    const blob = new Blob(chunks)
     const url = window.URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
@@ -146,6 +191,20 @@ const handleUrlChange = () => {
     }
   }, 500)
 }
+
+// 格式化文件大小
+const formatSize = (bytes: number): string => {
+  if (bytes === 0) return '0 B'
+  const k = 1024
+  const sizes = ['B', 'KB', 'MB', 'GB']
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  return `${(bytes / Math.pow(k, i)).toFixed(2)} ${sizes[i]}`
+}
+
+// 格式化下载速度
+const formatSpeed = (bytesPerSecond: number): string => {
+  return `${formatSize(bytesPerSecond)}/s`
+}
 </script>
 
 <template>
@@ -174,7 +233,7 @@ const handleUrlChange = () => {
           <a href="#" class="nav-link">API文档</a>
         </nav>
         
-        <a href="#" class="github-btn">
+        <a href="https://github.com/Alanjinchenzhu/universal-video-downloader" target="_blank" rel="noopener noreferrer" class="github-btn">
           <GithubOutlined />
           <span>GitHub</span>
         </a>
@@ -231,12 +290,26 @@ const handleUrlChange = () => {
               <svg class="spinner" viewBox="0 0 24 24">
                 <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" stroke-dasharray="31.4 31.4" />
               </svg>
-              <span>解析中...</span>
+              <span>{{ downloadProgress > 0 ? '下载中...' : '解析中...' }}</span>
             </span>
           </button>
           
+          <!-- 下载进度条 -->
+          <div v-if="isDownloading && downloadProgress > 0" class="download-progress">
+            <div class="progress-info">
+              <span class="progress-text">{{ downloadProgress.toFixed(1) }}%</span>
+              <span class="speed-text">{{ formatSpeed(downloadSpeed) }}</span>
+            </div>
+            <div class="progress-bar">
+              <div class="progress-fill" :style="{ width: `${downloadProgress}%` }"></div>
+            </div>
+            <div class="progress-size">
+              <span>{{ formatSize(downloadSize) }} / {{ formatSize(totalSize) }}</span>
+            </div>
+          </div>
+          
           <!-- 下载状态 -->
-          <div v-if="downloadStatus !== 'idle'" :class="['status-message', `status-${downloadStatus}`]">
+          <div v-if="downloadStatus !== 'idle' && !isDownloading" :class="['status-message', `status-${downloadStatus}`]">
             <CheckCircleOutlined v-if="downloadStatus === 'success'" />
             <CloseCircleOutlined v-else-if="downloadStatus === 'error'" />
             <span>{{ statusMessage }}</span>
@@ -735,6 +808,81 @@ const handleUrlChange = () => {
 
 .hint-icon {
   font-size: 14px;
+}
+
+/* ===== 下载进度条 ===== */
+.download-progress {
+  margin-top: 16px;
+  padding: 16px;
+  background: var(--bg);
+  border-radius: var(--radius-md);
+}
+
+.progress-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.progress-text {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--primary);
+}
+
+.speed-text {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 8px;
+  background: rgba(14, 165, 233, 0.1);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--primary) 0%, var(--primary-hover) 100%);
+  border-radius: 4px;
+  transition: width 0.3s ease;
+  position: relative;
+}
+
+.progress-fill::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.3) 50%,
+    transparent 100%
+  );
+  animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.progress-size {
+  font-size: 12px;
+  color: var(--text-muted);
+  text-align: center;
 }
 
 /* ===== Features ===== */

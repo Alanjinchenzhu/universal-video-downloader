@@ -292,6 +292,14 @@ def get_ydl_opts() -> dict:
         'no_warnings': True,
         'extract_flat': False,
         'cookiesfrombrowser': ('chrome',),
+        # 下载优化选项
+        'concurrent_fragment_downloads': 4,  # 并发下载片段
+        'buffersize': 1024 * 16,  # 缓冲区大小 16KB
+        'nocheckcertificate': True,  # 不检查证书
+        'retries': 3,  # 重试次数
+        'fragment_retries': 3,  # 片段重试次数
+        'skip_unavailable_fragments': True,  # 跳过不可用片段
+        'keepvideo': False,  # 不保留中间文件
     }
 
 
